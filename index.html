@@ -119,8 +119,8 @@
 </style>
 <style>
 :root{
-  --orange:#FF4D00;
-  --orange-deep:#D93D00;
+  --orange:#FF5A00;
+  --orange-deep:#D94A00;
   --ink:#16100B;
   --ink-soft:#241A12;
   --paper:#FFF6EF;
@@ -166,7 +166,8 @@ img,svg{max-width:100%;display:block}
   transition:color .25s ease;
 }
 .topbar.on-light{color:var(--ink)}
-.logo{font-weight:800;font-size:18px;letter-spacing:-.02em}
+.logo{font-weight:800;font-size:18px;letter-spacing:-.02em;display:inline-flex;align-items:baseline;gap:8px}
+.glyph{font-family:var(--mono);font-weight:700;font-size:.88em;letter-spacing:-.08em}
 .logo span{color:var(--orange)}
 .topbar .logo span{color:var(--ink)}
 .topbar.on-light .logo span{color:var(--orange)}
@@ -339,7 +340,28 @@ h2{
   font-family:var(--mono);font-weight:500;font-size:11px;letter-spacing:.02em;
   display:inline-flex;align-items:center;gap:7px;color:#8A6A50;
 }
-.chip::before{content:"";width:4px;height:4px;border-radius:50%;background:var(--orange);flex:none}
+.chip::before{content:"~";font-family:var(--mono);font-weight:700;font-size:13px;line-height:1;color:var(--orange);flex:none}
+
+/* ---------- manifesto (кинетический вордмарк) ---------- */
+.manifesto{
+  background:var(--paper);
+  padding:clamp(48px,9vh,110px) 0;
+  overflow:clip;
+}
+.mline{
+  white-space:nowrap;
+  margin-left:-12vw;
+  font-weight:900;text-transform:uppercase;
+  font-size:clamp(38px,6.4vw,92px);
+  line-height:1.06;letter-spacing:-.035em;
+  color:var(--paper-line);
+  will-change:transform;
+  user-select:none;
+}
+.mline .t{font-family:var(--mono);font-weight:700;letter-spacing:-.06em;font-size:.82em}
+.mline.hot{color:var(--orange)}
+.mline.inkline{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.mline{transform:none !important}}
 
 /* ---------- approach (dark) ---------- */
 .dark{background:var(--ink);color:var(--paper)}
@@ -434,7 +456,7 @@ footer a:hover{color:var(--orange)}
 </style>
 
 <header class="topbar glass" id="topbar">
-  <a class="logo" href="#">Айтишиппинг<span>.</span></a>
+  <a class="logo" href="#"><span class="glyph" aria-hidden="true">&lt;~&gt;</span>Айтишиппинг<span>.</span></a>
   <nav aria-label="Основное меню">
     <a href="#products">Продукты</a>
     <a href="#approach">Как работаем</a>
@@ -560,6 +582,13 @@ footer a:hover{color:var(--orange)}
   </div>
 </section>
 
+<div class="manifesto" id="manifesto" aria-hidden="true">
+  <div class="mline" data-speed="-2">itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping</div>
+  <div class="mline inkline" data-speed="1.2">из логистики <span class="t">&lt;~&gt;</span> из логистики <span class="t">&lt;~&gt;</span> из логистики <span class="t">&lt;~&gt;</span> из логистики</div>
+  <div class="mline hot" data-speed="-0.8">для логистики <span class="t">&lt;~&gt;</span> для логистики <span class="t">&lt;~&gt;</span> для логистики <span class="t">&lt;~&gt;</span> для логистики</div>
+  <div class="mline" data-speed="2">itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping <span class="t">&lt;~&gt;</span> itshipping</div>
+</div>
+
 <section id="approach" class="dark">
   <div class="wrap">
     <span class="eyebrow mono">Как работаем</span>
@@ -597,7 +626,7 @@ footer a:hover{color:var(--orange)}
 
 <footer>
   <div class="wrap">
-    <span class="logo">Айтишиппинг<span style="color:var(--orange)">.</span></span>
+    <span class="logo"><span class="glyph" style="color:var(--orange)" aria-hidden="true">&lt;~&gt;</span>Айтишиппинг<span style="color:var(--orange)">.</span></span>
     <div class="foot-links">
       <a href="#products">Продукты</a>
       <a href="#approach">Как работаем</a>
@@ -646,6 +675,25 @@ if(pin){
   addEventListener('scroll',onScroll,{passive:true});
   addEventListener('resize',onScroll,{passive:true});
   update();
+}
+
+// кинетический манифест: строки разъезжаются по скроллу
+const mani=document.getElementById('manifesto');
+if(mani && !matchMedia('(prefers-reduced-motion: reduce)').matches){
+  const lines=[...mani.querySelectorAll('.mline')];
+  let mRaf=null;
+  const mUpdate=()=>{
+    mRaf=null;
+    const r=mani.getBoundingClientRect();
+    const vh=window.innerHeight;
+    const p=Math.min(Math.max((vh-r.top)/(vh+r.height),0),1);
+    lines.forEach(l=>{
+      const s=parseFloat(l.dataset.speed||'1');
+      l.style.transform='translateX('+((p-.5)*s*160).toFixed(1)+'px)';
+    });
+  };
+  addEventListener('scroll',()=>{if(!mRaf)mRaf=requestAnimationFrame(mUpdate)},{passive:true});
+  mUpdate();
 }
 
 // стеклянная шапка: тёмный текст поверх светлой секции продуктов
