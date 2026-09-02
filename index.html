@@ -202,9 +202,9 @@ img,svg{max-width:100%;display:block}
     radial-gradient(90% 70% at 10% 110%, rgba(120,28,0,.32), transparent 60%);
   pointer-events:none;
 }
-.pin-outer{height:440vh;position:relative}
+.pin-outer{position:relative}
 .pin-inner{
-  position:sticky;top:0;
+  position:relative;
   height:100vh;height:100svh;min-height:560px;
   overflow:clip;
 }
@@ -256,8 +256,9 @@ img,svg{max-width:100%;display:block}
 .cap b{display:block;font-weight:700;font-size:18px;letter-spacing:-.01em}
 .cap span{display:block;color:#FFE3D3;font-size:13.5px;font-weight:300;margin-top:3px}
 .progress{display:flex;gap:7px;margin-top:14px}
-.progress i{height:3px;flex:1;background:rgba(255,255,255,.28);border-radius:99px;overflow:hidden}
-.progress i b{display:block;height:100%;width:100%;background:var(--white);transform:scaleX(0);transform-origin:left}
+.progress i{height:14px;flex:1;position:relative;cursor:pointer}
+.progress i::before{content:"";position:absolute;inset:5.5px 0;background:rgba(255,255,255,.28);border-radius:99px;overflow:hidden}
+.progress i b{position:absolute;inset:5.5px 0;border-radius:99px;background:var(--white);transform:scaleX(0);transform-origin:left}
 .scroll-hint{
   position:absolute;left:50%;bottom:14px;transform:translateX(-50%);z-index:3;
   font-family:var(--mono);font-weight:500;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;
@@ -497,7 +498,7 @@ footer a:hover{color:var(--orange)}
           <div class="cap"><b>Legat</b><span>Договор согласован и подписан — весь контур в системе</span></div>
           <div class="cap"><b>BIC Soft</b><span>Каждый ящик на виду: аренды, релизы, стоки</span></div>
         </div>
-        <div class="progress" aria-hidden="true"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
+        <div class="progress"><i><b></b></i><i><b></b></i><i><b></b></i><i><b></b></i></div>
       </div>
 
       <div class="m-cta">
@@ -647,6 +648,7 @@ const pin=document.getElementById('pin');
 if(pin){
   const objs=[...pin.querySelectorAll('.obj')];
   const caps=[...pin.querySelectorAll('.cap')];
+  const segs=[...pin.querySelectorAll('.progress i')];
   const bars=[...pin.querySelectorAll('.progress i b')];
   const giant=document.getElementById('giant');
   const stage=document.getElementById('objStage');
@@ -654,28 +656,39 @@ if(pin){
   const hint=document.getElementById('scrollHint');
   const N=objs.length;
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let raf=null;
-  const update=()=>{
-    raf=null;
-    const total=pin.offsetHeight-window.innerHeight;
-    const y=Math.min(Math.max(-pin.getBoundingClientRect().top,0),Math.max(total,1));
-    const p=total>0?y/total:0;
-    const idx=Math.min(N-1,Math.floor(p*N));
-    const local=p*N-idx;
-    objs.forEach((o,i)=>o.classList.toggle('active',i===idx));
-    caps.forEach((c,i)=>c.classList.toggle('active',i===idx));
-    bars.forEach((b,i)=>{b.style.transform=i<idx?'scaleX(1)':(i===idx?'scaleX('+local.toFixed(3)+')':'scaleX(0)')});
+  const DUR=4500;
+  let idx=0,t0=performance.now(),visible=true;
+  const show=i=>{
+    idx=(i+N)%N;
+    objs.forEach((o,k)=>o.classList.toggle('active',k===idx));
+    caps.forEach((c,k)=>c.classList.toggle('active',k===idx));
     idxEl.textContent='0'+(idx+1);
-    if(hint)hint.style.opacity=p>0.02?'0':'';
+    t0=performance.now();
+  };
+  const tick=now=>{
+    requestAnimationFrame(tick);
+    if(!visible)return;
+    const local=Math.min((now-t0)/DUR,1);
+    bars.forEach((b,k)=>{b.style.transform=k<idx?'scaleX(1)':(k===idx?'scaleX('+local.toFixed(3)+')':'scaleX(0)')});
+    if(local>=1)show(idx+1);
+  };
+  requestAnimationFrame(tick);
+  new IntersectionObserver(es=>{visible=es[0].isIntersecting;if(visible)t0=performance.now()},{threshold:.15}).observe(pin);
+  segs.forEach((s,k)=>s.addEventListener('click',()=>show(k)));
+  // параллакс: hero уезжает медленнее скролла — видно движение
+  let sRaf=null;
+  const par=()=>{
+    sRaf=null;
+    const y=Math.max(-pin.getBoundingClientRect().top,0);
+    if(hint)hint.style.opacity=scrollY>40?'0':'';
     if(!reduced){
-      giant.style.transform='translateY('+(p*-26).toFixed(1)+'px)';
-      stage.style.transform='translate(-50%,-50%) translateY('+((local-.5)*18).toFixed(1)+'px)';
+      giant.style.transform='translateY('+(y*.28).toFixed(1)+'px)';
+      giant.style.opacity=Math.max(1-y/(innerHeight*.8),0).toFixed(2);
+      stage.style.transform='translate(-50%,-50%) translateY('+(y*.14).toFixed(1)+'px)';
     }
   };
-  const onScroll=()=>{if(!raf)raf=requestAnimationFrame(update)};
-  addEventListener('scroll',onScroll,{passive:true});
-  addEventListener('resize',onScroll,{passive:true});
-  update();
+  addEventListener('scroll',()=>{if(!sRaf)sRaf=requestAnimationFrame(par)},{passive:true});
+  par();
 }
 
 // кинетический манифест: строки разъезжаются по скроллу
@@ -699,13 +712,12 @@ if(mani && !matchMedia('(prefers-reduced-motion: reduce)').matches){
 
 // стеклянная шапка: тёмный текст поверх светлой секции продуктов
 const topbar=document.getElementById('topbar');
-const lightSec=document.getElementById('products');
+const lightSecs=[document.getElementById('products'),document.getElementById('manifesto')].filter(Boolean);
 let tRaf=null;
 const topbarCheck=()=>{
   tRaf=null;
-  const r=lightSec.getBoundingClientRect();
   const probe=46; // середина шапки
-  topbar.classList.toggle('on-light',r.top<probe&&r.bottom>probe);
+  topbar.classList.toggle('on-light',lightSecs.some(s=>{const r=s.getBoundingClientRect();return r.top<probe&&r.bottom>probe}));
 };
 addEventListener('scroll',()=>{if(!tRaf)tRaf=requestAnimationFrame(topbarCheck)},{passive:true});
 topbarCheck();
